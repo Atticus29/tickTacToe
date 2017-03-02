@@ -92,6 +92,23 @@ function Game(playMode){
   this.playMode = playMode;
 }
 
+// Game.prototype.isValidMove = function (canvas, width, height) {
+//   $("#board-canvas").click(function(){
+//     coords = canvas.relMouseCoords(event);
+//     var adjustedCoords = adjustXYtoUpperLeftOfGridSquare(coords.x, coords.y, width, height);
+//     var status = this.currentBoard.find(adjustedCoords.x, adjustedCoords.y).isAvailable()
+//     return status;
+//   });
+// }
+
+function getCoordinatesFromClick(canvas, width, height){
+  $("#board-canvas").click(function(){
+    coords = canvas.relMouseCoords(event);
+  });
+  var adjustedCoords = adjustXYtoUpperLeftOfGridSquare(coords.x, coords.y, width, height);
+  return adjustedCoords;
+}
+
 Game.prototype.reportCurrentPlayer = function(){
   if (this.currentPlayer == this.player1){
     return "Player 1's turn";
@@ -100,7 +117,37 @@ Game.prototype.reportCurrentPlayer = function(){
   }
 }
 
-Game.prototype.runEasyAI = function(width, height, context){
+Game.prototype.runManualPlayerTurn = function(width, height, context, canvas){
+  for(var i = 0; i<9; i++){
+    $("#board-canvas").click(function(){
+      coords = canvas.relMouseCoords(event);
+    });
+  }
+  var candidateCoords = getCoordinatesFromClick(canvas, width, height);
+  while(!this.currentBoard.find(candidateCoords.x, candidateCoords.y).isAvailable()){
+    candidateCoords = getCoordinatesFromClick(canvas, width, height);
+  }
+  console.log("got here");
+
+  // if (this.currentBoard.find(coords.x, coords.y).isAvailable()){
+  //   this.currentBoard.find(coords.x, coords.y).mark(this.currentPlayer.symbol);
+  //   console.log("got here");
+  //   console.log(this.currentPlayer.symbol);
+  //   drawShape(this.currentPlayer.symbol, coords, width, height, context);
+  //   console.log("did this");
+  //   // assign current player to whichever player is not the current player
+  //   if (this.currentPlayer === this.player1){
+  //     this.currentPlayer = this.player2;
+  //     console.log("did this as well");
+  //   } else{
+  //     this.currentPlayer = this.player1;
+  //   }
+  // } else{
+  //   alert("Spot full. Please pick an available spot.");
+  // }
+}
+
+Game.prototype.runEasyAIPlayerTurn = function(width, height, context){
   var availableSpaces = this.currentBoard.getAvailableSpaces();
   var currentRandomIndex = getRandomInt(0, availableSpaces.length-1);
   availableSpaces[currentRandomIndex].mark("O");
@@ -108,11 +155,11 @@ Game.prototype.runEasyAI = function(width, height, context){
   this.currentPlayer = this.player1;
 }
 
-Game.prototype.runTurn = function(canvas, context, coords, width, height){
+Game.prototype.playGame = function(canvas, context, coords, width, height){
 
   if(this.playMode === "easy"){
     if (this.currentPlayer === this.player2){
-      this.runEasyAI(width, height, context);
+      this.runEasyAIPlayerTurn(width, height, context);
     } else{
       if (this.currentBoard.find(coords.x, coords.y).isAvailable()){
         this.currentBoard.find(coords.x, coords.y).mark(this.currentPlayer.symbol);
@@ -160,7 +207,7 @@ Game.prototype.isTurn = function(player){
 }
 
 Game.prototype.sayWhoWon = function(){
-  // if there are any winning configurations, the winner is the person who is not the current player, because runTurn swaps the player as its last task
+  // if there are any winning configurations, the winner is the person who is not the current player, because playGame swaps the player as its last task
   if(this.currentBoard.hasThreeAcross() || this.currentBoard.hasThreeUpDown() || this.currentBoard.hasThreeDiagonally()){
     if (this.currentPlayer === this.player1){
       return "Player 2 wins!"
@@ -289,21 +336,60 @@ function drawShape(symbol, coords, width, height, context){
   }
 }
 
+
+
 // Front End
 $(function(){
-  var mode = "easy";
+  var mode = "2p";
   var currentGame = new Game(mode);
   var width = 300;
   var height = 300;
+  var canvas = document.getElementById('board-canvas');
+  var context = canvas.getContext('2d');
+
+  if (currentGame.mode === "easy"){
+    for (var i = 0; i<9; i++){
+      currentGame.runManualPlayerTurn(coords, width, height, context);
+      currentGame.runEasyAIPlayerTurn(width,height,context);
+      currentGame.runManualPlayerTurn(coords, width, height, context);
+      currentGame.runEasyAIPlayerTurn(width,height,context);
+      currentGame.runManualPlayerTurn(coords, width, height, context);
+      currentGame.runEasyAIPlayerTurn(width,height,context);
+      currentGame.runManualPlayerTurn(coords, width, height, context);
+      currentGame.runEasyAIPlayerTurn(width,height,context);
+      currentGame.runManualPlayerTurn(coords, width, height, context);
+    }
+  } else{
+    for (var i = 0; i<9; i++){
+      currentGame.runManualPlayerTurn(width, height, context);
+      currentGame.runManualPlayerTurn(width, height, context);
+      currentGame.runManualPlayerTurn(width, height, context);
+      currentGame.runManualPlayerTurn(width, height, context);
+      currentGame.runManualPlayerTurn(width, height, context);
+      currentGame.runManualPlayerTurn(width, height, context);
+      currentGame.runManualPlayerTurn(width, height, context);
+      currentGame.runManualPlayerTurn(width, height, context);
+      currentGame.runManualPlayerTurn(width, height, context);
+    }
+  }
+
   $("#playDiv").prepend("<h2>It is " + currentGame.reportCurrentPlayer() + "</h2>");
+
+
+  // every time there's a click event, check whether it's in an available space
+
+
+
   $("#board-canvas").click(function(){
     event.preventDefault();
     if(!currentGame.isOver()){
-      var canvas = document.getElementById('board-canvas');
-      var ctx = canvas.getContext('2d');
       coords = canvas.relMouseCoords(event);
       var adjustedCoords = adjustXYtoUpperLeftOfGridSquare(coords.x, coords.y, width, height);
-      currentGame.runTurn(canvas, ctx, adjustedCoords, width, height);
+      while(!currentGame.currentBoard.find(adjustedCoords.x, adjustedCoords.y).isAvailable()){
+
+      }
+
+      currentGame.playGame(canvas, ctx, adjustedCoords, width, height);
       if(currentGame.isOver()){
         $("#playDiv").hide();
         $("#hiddenResults h2").remove();
